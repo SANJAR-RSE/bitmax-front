@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Palette derived from the logo: cyan #22d3ee and slate #64748b — the two halves of the mark,
+ * buyer and seller shaking hands.
+ *
+ * Those two hexes are used where each actually works. #22d3ee is a light, high-chroma cyan: it
+ * sings on a dark ground but carries white button text at only ~1.9:1 on white, far under AA,
+ * so light mode steps the accent down to cyan-700 and keeps the bright value for dark. #64748b
+ * is exactly slate-500, so the whole neutral ramp is the slate family rather than a grey picked
+ * to sit next to it — the greys and the brand share one hue.
+ */
+@layer base {
+  :root {
+    --ground: 248 250 252; /* slate-50 */
+    --surface: 255 255 255;
+    --raised: 241 245 249; /* slate-100 */
+    --line: 226 232 240; /* slate-200 */
+    --ink: 15 23 42; /* slate-900 */
+    --muted: 71 85 105; /* slate-600 */
+    --faint: 100 116 139; /* slate-400 */
+
+    --accent: 14 116 144; /* cyan-700 — white text on this is ~5.3:1 */
+    --accent-hover: 21 94 117; /* cyan-800 */
+    --accent-soft: 207 250 254; /* cyan-100 */
+    --accent-ink: 255 255 255; /* text on an accent-filled surface */
+    --accent-line: 103 232 249; /* cyan-300 */
+
+    --ok: 4 120 87; /* emerald-700 */
+    --warn: 190 18 60; /* rose-700 */
+  }
+
+  .dark {
+    --ground: 2 6 23; /* slate-950 */
+    --surface: 15 23 42; /* slate-900 */
+    --raised: 30 41 59; /* slate-800 */
+    --line: 51 65 85; /* slate-700 */
+    --ink: 226 232 240; /* slate-200 */
+    --muted: 148 163 184; /* slate-400 */
+    --faint: 148 163 184; /* slate-500 — the brand's second colour, in its natural role */
+
+    --accent: 34 211 238; /* cyan-400 — the brand colour, at full strength */
+    --accent-hover: 103 232 249; /* cyan-300 */
+    --accent-soft: 22 78 99; /* cyan-900 */
+    --accent-ink: 8 47 73; /* dark text on a bright cyan fill */
+    --accent-line: 8 145 178; /* cyan-600 */
+
+    --ok: 52 211 153; /* emerald-400 */
+    --warn: 251 113 133; /* rose-400 */
+  }
+
+  * {
+    border-color: rgb(var(--line));
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 100px;
+  }
+
+  body {
+    /* Explicit, token-driven: never inherit a ground from whatever hosts the page. */
+    background-color: rgb(var(--ground));
+    color: rgb(var(--ink));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    text-wrap: balance;
+    letter-spacing: -0.025em;
+  }
+
+  /* Digits that sit in columns must not jitter as they change. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.25);
+  }
+}
+
+@layer components {
+  .eyebrow { @apply flex items-center gap-2 text-xs font-medium tracking-wide text-muted; }
+  .hero-grid { background-image: radial-gradient(rgb(var(--accent) / .13) 1px, transparent 1px); background-size: 22px 22px; mask-image: linear-gradient(110deg, transparent 15%, black); }
+  .page-title { @apply text-2xl font-bold tracking-tight text-ink sm:text-3xl; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] rounded-lg font-semibold
+           transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed;
+  }
+  .btn-accent {
+    @apply btn bg-accent text-[rgb(var(--accent-ink))] hover:bg-accent-hover px-4 py-2.5;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-surface text-ink hover:bg-raised px-4 py-2.5;
+  }
+
+  .field {
+    @apply min-h-[44px] w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-ink
+           placeholder:text-faint outline-none transition
+           focus:border-accent focus:ring-2 focus:ring-accent/25;
+  }
+
+  .chip {
+    @apply inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-line
+           bg-surface px-3 py-1.5 text-sm text-muted transition
+           hover:border-accent/50 hover:text-ink;
+  }
+  .chip-on {
+    @apply border-accent bg-accent-soft font-semibold text-accent;
+  }
+
+  .surface {
+    @apply rounded-card border border-line bg-surface;
+  }
+
+  /* Loading placeholder that sweeps rather than pulses — reads as work in progress. */
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-raised;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--line) / 0.55), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
