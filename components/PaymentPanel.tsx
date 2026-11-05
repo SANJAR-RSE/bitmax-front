@@ -27,13 +27,11 @@ type Status = Awaited<ReturnType<typeof api.transactionStatus>>;
 export function PaymentPanel({ transactionId }: { transactionId: string }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
   const inFlight = useRef(false);
   const alive = useRef(true);
   const load = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
-    setChecking(true);
     try {
       const data = await api.transactionStatus(transactionId);
       if (alive.current) {
@@ -44,7 +42,6 @@ export function PaymentPanel({ transactionId }: { transactionId: string }) {
       if (alive.current) setError(err?.message || "Holatni olib bo‘lmadi");
     } finally {
       inFlight.current = false;
-      if (alive.current) setChecking(false);
     }
   }, [transactionId]);
   useEffect(() => {
@@ -120,94 +117,14 @@ export function PaymentPanel({ transactionId }: { transactionId: string }) {
     );
   }
 
-  if (status.paymentProvider === "tezcheck") {
+  if (status.paymentReview) {
     return (
-      <div className="space-y-4">
-        <ol
-          aria-label="To‘lov bosqichlari"
-          className="grid grid-cols-3 gap-2 text-center text-xs"
-        >
-          <li className="rounded-lg bg-ok/10 py-3 text-ok">1. Band qilindi</li>
-          <li
-            aria-current="step"
-            className="rounded-lg bg-accent-soft py-3 font-semibold text-accent"
-          >
-            2. To‘lov
-          </li>
-          <li className="rounded-lg bg-raised py-3 text-muted">
-            3. Tekshirish
-          </li>
-        </ol>
-        <div className="surface overflow-hidden">
-          <div className="border-b border-line bg-raised/50 p-6">
-            <p className="eyebrow">
-              <Icon name="shield" width={16} /> KAFILLI XARID
-            </p>
-            <h2 className="mt-3 text-lg font-semibold">{status.title}</h2>
-            <p className="tnum mt-4 text-4xl font-bold">
-              {status.paymentAmount === undefined
-                ? "Summa aniqlanmoqda"
-                : formatUzs(status.paymentAmount)}
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              To‘lov TezCheck sahifasida amalga oshiriladi
-            </p>
-          </div>
-          <div className="space-y-4 p-6">
-            {status.paymentReview ? (
-              <Notice tone="warn">
-                To‘lov tekshirilmoqda. Qayta pul o‘tkazmang. Natija kelishi
-                bilan shu sahifada ko‘rinadi.
-              </Notice>
-            ) : status.paymentUrl ? (
-              <>
-                <a
-                  href={status.paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-accent w-full"
-                >
-                  To‘lovga o‘tish <Icon name="arrow" />
-                </a>
-                <p className="text-center text-xs text-muted">
-                  To‘lov yangi oynada ochiladi. Tugatgach shu yerga qayting.
-                </p>
-              </>
-            ) : (
-              <Notice tone="info">
-                To‘lov havolasi tayyorlanmoqda. Holat avtomatik yangilanadi.
-              </Notice>
-            )}
-            <div className="flex items-center justify-between gap-3 border-t border-line pt-4 text-sm">
-              <span className="flex items-center gap-2 text-muted">
-                <Icon name="clock" width={17} /> Bandlik muddati
-              </span>
-              <Countdown to={status.expireAt} onDone={load} />
-            </div>
-            <button
-              type="button"
-              onClick={load}
-              disabled={checking}
-              className="btn-ghost w-full text-sm"
-            >
-              {checking && <Spinner size={16} />}
-              {checking ? "Tekshirilmoqda…" : "To‘lov holatini tekshirish"}
-            </button>
-            {error && <Notice tone="warn">{error}</Notice>}
-          </div>
-        </div>
-        <p className="text-center text-xs leading-6 text-muted">
-          To‘lov tasdiqlangach, akkauntni tekshirish bosqichi ochiladi.{" "}
-          <a
-            className="text-accent underline underline-offset-4"
-            href="https://t.me/bitimax_admin"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Yordam kerakmi?
-          </a>
-        </p>
-        <p className="break-all text-center font-mono text-[11px] text-faint">
+      <div className="surface space-y-4 p-6 sm:p-8">
+        <Notice tone="warn">
+          To‘lov tekshirilmoqda. Qayta pul o‘tkazmang. Natija shu sahifada
+          ko‘rinadi.
+        </Notice>
+        <p className="break-all font-mono text-xs text-muted">
           Buyurtma: {transactionId}
         </p>
       </div>
@@ -262,8 +179,8 @@ export function PaymentPanel({ transactionId }: { transactionId: string }) {
             <CopyButton value={status.card.number} />
           </div>
           <dl className="mt-3 space-y-1.5 border-t border-line pt-3 text-sm">
-            <Row label="Egasi" value={status.card.holder} />
-            <Row label="Bank" value={status.card.bank} />
+            {status.card.holder && <Row label="Egasi" value={status.card.holder} />}
+            {status.card.bank && <Row label="Bank" value={status.card.bank} />}
             <Row
               label="Muddat"
               value={`${formatDateTime(status.expireAt)} gacha`}

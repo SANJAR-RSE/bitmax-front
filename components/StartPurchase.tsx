@@ -76,7 +76,7 @@ export function StartPurchase({ productId }: { productId: string }) {
       <ol className="mt-7 space-y-3 text-sm leading-relaxed text-muted">
         {[
           policy ? `Mahsulot ${policy.paymentWindowMinutes} daqiqaga siz uchun band qilinadi.` : 'To‘lov sahifasida mahsulot bandligi muddati ko‘rsatiladi.',
-          policy?.paymentProvider === 'sms' ? 'To‘lov sahifasidagi aniq summani ko‘rsatilgan kartaga yuboring.' : 'To‘lov sahifasidagi havola orqali to‘lang. Karta ma’lumotlari Bitmax’ga kiritilmaydi.',
+          'To‘lov sahifasidagi aniq summani ko‘rsatilgan kartaga yuboring.',
           'To‘lov tasdiqlangach, ma’lumotlarni ochasiz va tekshirasiz.',
           policy ? `Tekshirgach tasdiqlaysiz. Ma’lumot ochilgandan ${policy.autoReleaseHours} soat keyin bitim avtomatik yakunlanadi.` : 'Tekshirgach tasdiqlaysiz. Avtomatik yakunlash muddatini buyurtmada kuzating.',
         ].map((step, index) => (
