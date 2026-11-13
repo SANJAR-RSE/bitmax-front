@@ -33,9 +33,9 @@ export function OrderView({ orderId }: { orderId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
-  const [refundStep, setRefundStep] = useState<"idle" | "reasons" | "confirm">(
-    "idle",
-  );
+  const [refundStep, setRefundStep] = useState<
+    "idle" | "reasons" | "confirm" | "dispute"
+  >("idle");
   const [reason, setReason] = useState<string | null>(null);
 
   if (loading) return <Loading />;
@@ -46,6 +46,8 @@ export function OrderView({ orderId }: { orderId: string }) {
 
   const { order, refundQuote } = data;
   const holding = order.status === "holding";
+  const disputed = order.status === "disputed";
+  const settled = ["released", "refunded", "partial_refunded"].includes(order.status);
 
   async function run(key: string, action: () => Promise<void>) {
     setBusy(key);
@@ -87,6 +89,17 @@ export function OrderView({ orderId }: { orderId: string }) {
       setCredentials(null);
       setFlash(
         `Qaytarildi: balansingizga ${formatUzs(result.refundToBuyer)} tushdi.`,
+      );
+      await reload();
+    });
+
+  const openDispute = (reasonType: string, details: string) =>
+    run("dispute", async () => {
+      await api.dispute(orderId, reasonType, details || undefined);
+      setRefundStep("idle");
+      setCredentials(null);
+      setFlash(
+        "Nizo ochildi. Pul muzlatildi — admin qaror qilguncha sotuvchiga o‘tmaydi.",
       );
       await reload();
     });
@@ -134,6 +147,15 @@ export function OrderView({ orderId }: { orderId: string }) {
 
       {flash && <Notice tone="ok">{flash}</Notice>}
       {actionError && <Notice tone="warn">{actionError}</Notice>}
+
+      {disputed && (
+        <Notice tone="info">
+          Bu buyurtma bo‘yicha nizo ochilgan. Pul muzlatilgan va avtomatik
+          o‘tkazilmaydi. Dalillaringizni (skrinshot, video) Telegram botdagi
+          “📎 Dalil yuborish” tugmasi orqali yuboring — admin qaror qilgach natija
+          shu yerga va Telegram’ga keladi.
+        </Notice>
+      )}
 
       {holding && !credentials && (
         <div className="surface p-5 sm:p-6">
@@ -238,12 +260,35 @@ export function OrderView({ orderId }: { orderId: string }) {
                 Tasdiqlagach pul sotuvchiga o‘tadi va buni orqaga qaytarib
                 bo‘lmaydi.
               </p>
+              {order.revealedAt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmReady(false);
+                    setRefundStep("dispute");
+                  }}
+                  className="mt-3 text-sm text-muted underline underline-offset-4 hover:text-ink"
+                  disabled={busy !== null}
+                >
+                  ⚖️ Jiddiy muammo? Nizo ochish
+                </button>
+              )}
             </>
+          )}
+
+          {refundStep === "dispute" && (
+            <DisputeForm
+              busy={busy === "dispute"}
+              onSubmit={openDispute}
+              onCancel={() => setRefundStep("idle")}
+            />
           )}
 
           {refundStep === "reasons" && (
             <RefundReasons
               quote={refundQuote}
+              canDispute={Boolean(order.revealedAt)}
+              onDispute={() => setRefundStep("dispute")}
               onCancel={() => setRefundStep("idle")}
               onPick={(picked) => {
                 setReason(picked);
@@ -294,7 +339,7 @@ export function OrderView({ orderId }: { orderId: string }) {
         </div>
       )}
 
-      {!holding && !order.rated && (
+      {settled && !order.rated && (
         <RatingBox
           orderId={orderId}
           busy={busy === "rate"}
@@ -332,10 +377,14 @@ function Secret({ label, value }: { label: string; value: string }) {
 /** Shows exactly what a refund pays before the buyer commits to one. */
 function RefundReasons({
   quote,
+  canDispute,
+  onDispute,
   onPick,
   onCancel,
 }: {
   quote: RefundQuote | null;
+  canDispute: boolean;
+  onDispute: () => void;
   onPick: (reason: string) => void;
   onCancel: () => void;
 }) {
@@ -348,9 +397,20 @@ function RefundReasons({
         <p className="mt-2 text-sm leading-relaxed text-muted">
           {quote.message}
         </p>
-        <button type="button" onClick={onCancel} className="btn-ghost mt-4">
-          Orqaga
-        </button>
+        <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+          {canDispute && (
+            <button
+              type="button"
+              onClick={onDispute}
+              className="btn-accent flex-1"
+            >
+              ⚖️ Nizo ochish
+            </button>
+          )}
+          <button type="button" onClick={onCancel} className="btn-ghost flex-1">
+            Orqaga
+          </button>
+        </div>
       </>
     );
   }
@@ -405,6 +465,77 @@ function RefundReasons({
       >
         Bekor qilish
       </button>
+    </>
+  );
+}
+
+/** Freezes the escrow and hands the order to an admin. */
+function DisputeForm({
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  busy: boolean;
+  onSubmit: (reasonType: string, details: string) => void;
+  onCancel: () => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const [details, setDetails] = useState("");
+
+  return (
+    <>
+      <h2 className="font-semibold text-ink">⚖️ Nizo ochish</h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted">
+        Pul admin qaror qilguncha muzlatiladi va sotuvchiga avtomatik
+        o‘tmaydi. Ochgandan keyin dalillaringizni (skrinshot, video)
+        qo‘llab-quvvatlashga yuborasiz.
+      </p>
+
+      <p className="mt-4 text-sm text-muted">Sababni tanlang:</p>
+      <div className="mt-2 space-y-2" role="radiogroup" aria-label="Nizo sababi">
+        {REFUND_REASONS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="radio"
+            aria-checked={picked === item.id}
+            onClick={() => setPicked(item.id)}
+            className={`w-full rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${
+              picked === item.id
+                ? "border-accent text-ink"
+                : "border-line text-muted hover:border-accent/50 hover:text-ink"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-4 block text-sm text-muted" htmlFor="dispute-details">
+        Qisqacha izoh (ixtiyoriy)
+      </label>
+      <textarea
+        id="dispute-details"
+        value={details}
+        maxLength={1000}
+        onChange={(event) => setDetails(event.target.value)}
+        rows={3}
+        className="mt-1.5 w-full rounded-lg border border-line bg-transparent px-3.5 py-2.5 text-sm text-ink"
+      />
+
+      <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+        <SubmitButton
+          busy={busy}
+          disabled={!picked}
+          onClick={() => picked && onSubmit(picked, details.trim())}
+          className="btn-accent flex-1"
+        >
+          Nizo ochish
+        </SubmitButton>
+        <button type="button" onClick={onCancel} className="btn-ghost flex-1">
+          Bekor qilish
+        </button>
+      </div>
     </>
   );
 }

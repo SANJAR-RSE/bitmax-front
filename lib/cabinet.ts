@@ -229,6 +229,8 @@ export const api = {
       reasonType,
     }),
   rate: (id: string, rating: number) => post<{ ok: boolean }>(`orders/${id}/rate`, { rating }),
+  dispute: (id: string, reasonType: string, details?: string) =>
+    post<{ disputeId: string; status: string; slaDueAt: string }>(`orders/${id}/dispute`, { reasonType, details }),
 
   buy: (productId: string) => post<PaymentInstructions>('purchases', { productId }),
   transactionStatus: (id: string) =>

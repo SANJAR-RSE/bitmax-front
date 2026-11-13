@@ -80,9 +80,9 @@ export function WalletView() {
     setBusy("payout");
     setNotice(null);
     try {
-      const payout = await api.requestPayout(
-        parseInt(amount.replace(/\D/g, ""), 10) || 0,
-      );
+      // Send exactly the number that was validated above. Re-parsing by stripping non-digits
+      // turned "100000.00" (which validates as 100 000) into 10 000 000.
+      const payout = await api.requestPayout(requested);
       setAmount("");
       setNotice({
         tone: "ok",

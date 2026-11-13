@@ -2,7 +2,7 @@
 
 /**
  * Headers that do not vary per request. The Content-Security-Policy is *not* here — it
- * carries a per-request nonce and is set in middleware.ts.
+ * carries a per-request nonce and is set in proxy.ts.
  */
 const securityHeaders = [
   // Two years, subdomains included: once a browser has seen this, it will not be talked
@@ -52,10 +52,10 @@ const nextConfig = {
     // hardcoding localhost here silently breaks in any non-local deployment.
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
     return {
-      // `afterFiles` (rather than the default `beforeFiles`) so an explicit route handler
-      // always wins: /api/me/* must go through the authenticating proxy, never straight
-      // through to the backend without a session.
-      afterFiles: [{ source: '/api/products/:path*', destination: `${backendUrl}/api/products/:path*` }],
+      // `fallback`, so every route handler wins, dynamic ones included. `afterFiles` runs
+      // *before* dynamic routes: it silently took over /api/products/[id], skipping that
+      // handler and sending the request to whatever BACKEND_URL was at build time.
+      fallback: [{ source: '/api/products/:path*', destination: `${backendUrl}/api/products/:path*` }],
     };
   },
 };
